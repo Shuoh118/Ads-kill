@@ -4,7 +4,7 @@
 
 An Android ad-blocking LSPosed module built on [libxposed](https://github.com/libxposed/api) API 102.
 
-> Currently supports **NetEase Cloud Music** only — should work universally, but please verify on your own (tested on 8.7.76)
+> Currently supports **NetEase Cloud Music**, **Kuaishou** and **Kuaishou Lite** only — should work universally, but please verify on your own
 
 ## Features
 

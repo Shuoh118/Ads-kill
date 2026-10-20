@@ -1,6 +1,6 @@
 # Ads Kill
 
-[中文](README.md)
+[简体中文](README.md)
 
 An Android ad-blocking LSPosed module built on [libxposed](https://github.com/libxposed/api) API 102.
 

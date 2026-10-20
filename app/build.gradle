@@ -1,0 +1,82 @@
+plugins {
+    id 'com.android.application'
+}
+
+/*
+ * 签名策略：
+ *   1. 有 keystore.properties 且密钥文件真实存在 -> 用你的 release 密钥
+ *   2. 否则一律用 debug 签名（Android Studio 自动生成 ~/.android/debug.keystore）
+ *
+ * 别人 clone 源码后什么都不用配，直接 Build 就能出可安装的包。
+ */
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+def releaseStore = null
+
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+    // 必须校验密钥文件真实存在，否则别人的机器上会构建失败
+    def candidate = rootProject.file(keystoreProps['storeFile'] ?: '')
+    if (candidate.exists()) {
+        releaseStore = candidate
+    }
+}
+
+def hasReleaseKey = releaseStore != null
+
+android {
+    namespace 'io.github.shuoh118.adskill'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'io.github.shuoh118.adskill'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        if (hasReleaseKey) {
+            release {
+                storeFile releaseStore
+                storeType keystoreProps['storeType'] ?: 'PKCS12'
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            // debug keystore 由 Android Studio / SDK 自动生成，无需任何配置
+            minifyEnabled false
+            debuggable true
+        }
+        release {
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // 关键：没有密钥时退回 debug 签名，保证一定能构建
+            signingConfig hasReleaseKey ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // META-INF/xposed 必须原样保留
+    packaging {
+        resources {
+            excludes += ['META-INF/*.kotlin_module']
+        }
+    }
+}
+
+dependencies {
+    // libxposed api 102，本地 aar，不需要联网
+    compileOnly files('libs/api-102.0.0.aar')
+}

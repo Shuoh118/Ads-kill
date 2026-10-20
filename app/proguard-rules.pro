@@ -1,0 +1,3 @@
+-keep class com.gucci.ncmadfree.** { *; }
+-keep class io.github.libxposed.** { *; }
+-dontwarn io.github.libxposed.**

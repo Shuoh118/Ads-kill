@@ -1,0 +1,28 @@
+# 构建产物
+.build/
+build/
+app/build/
+dist/*.apk
+dist/*.idsig
+*.apk
+*.idsig
+
+# Gradle
+.gradle/
+local.properties
+gradle-app.setting
+.gradletasknamecache
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.DS_Store
+
+# 密钥，绝不能提交
+*.jks
+*.keystore
+*.p12
+keystore.properties

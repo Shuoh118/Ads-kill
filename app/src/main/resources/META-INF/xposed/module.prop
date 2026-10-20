@@ -1,0 +1,17 @@
+id=io.github.shuoh118.adskill
+name=Ads Kill
+version=1.0
+versionCode=1
+author=shuoh118
+description=移除开屏及内部广告
+
+# 下面两个决定 LSPosed 里是否显示「源码」和「主页」按钮
+sourceUrl=https://github.com/Shuoh118/Ads-kill
+homepageUrl=https://github.com/Shuoh118
+
+minApiVersion=100
+targetApiVersion=102
+
+staticScope=true
+exceptionMode=protective
+autoHotReload=false

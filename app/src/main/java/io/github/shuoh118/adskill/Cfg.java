@@ -3,11 +3,15 @@ package io.github.shuoh118.adskill;
 // 总配置
 public final class Cfg {
 
-    // 目标包名
-    public static final String PKG = "com.netease.cloudmusic";
+    // 支持的应用包名
+    public static final String[] PKGS = {
+            "com.netease.cloudmusic",   // 网易云音乐
+            "com.smile.gifmaker",       // 快手
+            "com.kuaishou.nebula"       // 快手极速版
+    };
 
     // true 时每次 hook 都打日志，排查用
-    public static final boolean DEBUG = false;
+    public static final boolean DEBUG = true;
 
     // 安装摘要日志
     public static final boolean LOG = true;
@@ -63,5 +67,18 @@ public final class Cfg {
     public static final boolean SYNC_SCAN = false;
 
     private Cfg() {
+    }
+
+    // 当前进程是否在支持列表里
+    public static boolean isTarget(String pkg) {
+        if (pkg == null) {
+            return false;
+        }
+        for (String p : PKGS) {
+            if (p.equals(pkg)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

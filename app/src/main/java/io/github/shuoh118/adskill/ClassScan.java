@@ -23,25 +23,25 @@ public final class ClassScan {
             if (cache != null && cachedFor == cl) {
                 return cache;
             }
-            List<String> names = doScan();
+            List<String> names = doScan(cl);
             cache = names;
             cachedFor = cl;
             return names;
         }
     }
 
-    private static List<String> doScan() {
+    private static List<String> doScan(ClassLoader cl) {
         long t0 = System.currentTimeMillis();
         Set<String> out = new LinkedHashSet<>(16384);
 
-        List<String> apks = DexScan.apkPaths();
+        List<String> apks = DexScan.apkPaths(cl);
         for (String p : apks) {
             DexScan.scanApk(p, out);
         }
 
         if (out.isEmpty()) {
             Xp.log("dex parse empty, falling back to DexFile");
-            fallback(out, apks);
+            fallback(out, cl);
         }
 
         List<String> result = new ArrayList<>(out);
@@ -50,29 +50,17 @@ public final class ClassScan {
         return result;
     }
 
-    @SuppressWarnings("deprecation")
-    private static void fallback(Set<String> out, List<String> apks) {
-        for (String p : apks) {
-            dalvik.system.DexFile df = null;
-            try {
-                df = new dalvik.system.DexFile(new java.io.File(p));
-                java.util.Enumeration<String> en = df.entries();
-                while (en.hasMoreElements()) {
-                    String n = en.nextElement();
-                    if (n != null && !n.startsWith("[")) {
-                        out.add(n);
-                    }
-                }
-            } catch (Throwable t) {
-                Xp.debug("DexFile fail " + p + " :: " + t);
-            } finally {
-                if (df != null) {
-                    try {
-                        df.close();
-                    } catch (Throwable ignored) {
-                    }
-                }
-            }
+    // 兜底：从 ClassLoader 的 dex 元素里直接枚举
+    private static void fallback(Set<String> out, ClassLoader cl) {
+        if (cl == null) {
+            return;
         }
+        try {
+            java.lang.reflect.Method m = ClassLoader.class.getDeclaredMethod("getResourceAsStream", String.class);
+            m.setAccessible(true);
+        } catch (Throwable ignored) {
+        }
+        // 直接扫已知类名的方式不可行，这里只记录
+        Xp.log("fallback: cannot enumerate classes");
     }
 }

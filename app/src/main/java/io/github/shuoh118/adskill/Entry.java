@@ -18,6 +18,6 @@ public final class Entry extends XposedModule {
     @Override
     public void onPackageLoaded(XposedModuleInterface.PackageLoadedParam param) {
         Xp.bind(this);
-        Bootstrap.start(Xp.packageNameOf(param), Xp.classLoaderOf(param));
+        Bootstrap.start(Xp.packageNameOf(param), Xp.classLoaderOf(param), param);
     }
 }

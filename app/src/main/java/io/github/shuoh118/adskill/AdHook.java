@@ -54,10 +54,15 @@ public final class AdHook {
         long t0 = System.currentTimeMillis();
         List<String> names = ClassScan.allClassNames(cl);
         int classes = 0;
+        int loaded = 0;
         for (String name : names) {
             if (name == null || name.isEmpty() || !Names.isAdClass(name)) {
                 continue;
             }
+            if (loaded >= 3000) {
+                break;
+            }
+            loaded++;
             Class<?> target;
             try {
                 target = Class.forName(name, false, cl);

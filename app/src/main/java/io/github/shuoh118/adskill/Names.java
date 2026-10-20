@@ -27,7 +27,22 @@ public final class Names {
             "com.applovin.",
             "com.google.android.gms.ads",
             "com.sigmob.",
-            "com.anythink."
+            "com.anythink.",
+            // 快手自家广告
+            "com.kuaishou.ad",
+            "com.kuaishou.ads",
+            "com.kuaishou.advert",
+            "com.kuaishou.union",
+            "com.kuaishou.merchant",
+            "com.kwai.ad",
+            "com.kwai.monitor",
+            "com.yxcorp.kuaishou.addfp"
+    };
+
+    // 快手自家广告类名特征（不含 ad 词但确实是广告的）
+    private static final String[] KS_AD_WORD = {
+            "ksad", "ksadvert", "adwebview", "adlanding", "adfeed", "promote",
+            "promotion", "commercial", "sponsor", "brandad", "effectad"
     };
 
         // 广告开关类配置键必须带这些语义才强制关闭
@@ -138,7 +153,7 @@ public final class Names {
         return false;
     }
 
-        // 广告类：整词含 ad，或在 .ad
+    // 广告类：整词含 ad，或在 .ad. 包下，或广告 SDK 包，或快手广告特征词
     public static boolean isAdClass(String fqcn) {
         if (fqcn == null || fqcn.isEmpty()) {
             return false;
@@ -148,12 +163,26 @@ public final class Names {
         }
         String lower = fqcn.toLowerCase();
         if (!lower.contains("ad")) {
-            return false;
+            // 名字里没有 ad，再看快手那批特征词
+            return matchKsAd(lower);
         }
         if (lower.contains(".ad.") || lower.contains(".ads.") || lower.contains(".advert")) {
             return true;
         }
+        if (matchKsAd(lower)) {
+            return true;
+        }
         return hasAd(words(fqcn));
+    }
+
+    // 快手广告类：类名里出现 ksad / promote / sponsor 这类词
+    private static boolean matchKsAd(String lower) {
+        for (String k : KS_AD_WORD) {
+            if (lower.contains(k)) {
+                return true;
+            }
+        }
+        return false;
     }
 
         // 广告自定义 View：整词含 ad，且末词是视图类后缀

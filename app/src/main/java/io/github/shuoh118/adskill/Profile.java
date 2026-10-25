@@ -16,7 +16,8 @@ public final class Profile {
     // 应用类型
     public enum Kind {
         NETEASE,
-        KUAISHOU
+        KUAISHOU,
+        COOLAPK
     }
 
     public final Kind kind;
@@ -114,6 +115,17 @@ public final class Profile {
             true
     );
 
+    // ---------- 酷安 ----------
+    public static final Profile COOLAPK = new Profile(
+            Kind.COOLAPK,
+            "com.coolapk.market",
+            new String[]{"com.coolapk."},
+            new String[]{"广告", "赞助"},
+            new String[]{"feedDetailReplySponsorCard"},
+            false,
+            true
+    );
+
     // 按包名取策略
     public static Profile of(String pkg) {
         if (pkg == null) {
@@ -128,10 +140,18 @@ public final class Profile {
         if (pkg.equals(KUAISHOU_LITE.pkg)) {
             return KUAISHOU_LITE;
         }
+        if (pkg.equals(COOLAPK.pkg)) {
+            return COOLAPK;
+        }
         return null;
     }
 
     public boolean isKuaishou() {
         return kind == Kind.KUAISHOU;
     }
+
+    public boolean isCoolapk() {
+        return kind == Kind.COOLAPK;
+    }
+
 }

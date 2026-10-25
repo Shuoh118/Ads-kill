@@ -72,10 +72,13 @@ public final class SplashWatch {
         if (decor == null) {
             return false;
         }
-
-        // 0. 每帧都先清跳过按钮/倒计时
+        // 跳过按钮清除有独立窗口，不受 SplashWindow 限制
         SkipKiller.kill(decor);
 
+        // 广告识别只在开屏窗口内
+        if (!SplashWindow.active()) {
+            return true;
+        }
         if (!decor.isAttachedToWindow()) {
             return false;
         }

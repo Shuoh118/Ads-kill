@@ -39,6 +39,49 @@ public final class Cfg {
     // 摇一摇广告：拦截广告类的传感器注册
     public static final boolean KILL_SHAKE = true;
 
+    /*
+     * 快手广告拦截策略。
+     *
+     * KS_DATA  —— 数据层：让 isAd() 返回 false、getAdInfo() 返回 null
+     * KS_VIEW  —— 视图层按 tag/id 隐藏（已停用，会误伤粉丝数）
+     * KS_WATCH —— 角标扫描（已停用，会误伤获赞栏）
+     *
+     * 视图层两个方案都会把"统计数字"当成广告角标连带隐藏，
+     * 而快手的数字栏和广告卡片结构无法可靠区分，所以只保留数据层。
+     */
+    public static final boolean KS_DATA = false;
+    public static final boolean KS_VIEW = false;
+    public static final boolean KS_WATCH = false;
+
+    /*
+     * 快手：FastSkip（拦广告加载 + 立刻回调失败）
+     *
+     * 默认关闭。它靠"类名含 ad + 方法名以 load 开头"判定，
+     * 但快手的统计字段也走 load 方法（loadCount / loadStat / loadProfile），
+     * 只要类名里恰好带 ad 就会被拦成 null，
+     * 表现就是点赞/收藏/评论/粉丝数随机消失。
+     *
+     * 只有开屏卡住且确认不误伤时才打开。
+     */
+    public static final boolean KS_FASTSKIP = false;
+
+    /*
+     * 快手：SdkHook（拦广告 SDK 的 load/show/isReady）
+     *
+     * 默认关闭。快手 App 不用外部联盟 SDK，
+     * 但这个 hook 会去加载 com.kuaishou.ad.* 一类，
+     * 如果类名恰好和统计数据链有关，同样会把方法拦成 false。
+     */
+    public static final boolean KS_SDKHOOK = false;
+
+    /*
+     * 快手：KsTimer（压缩 2~10 秒延时）
+     *
+     * 默认关闭。它会把手柄延时压到 1ms，
+     * 如果统计数据靠延时任务加载，也会被提前触发导致空数据。
+     */
+    public static final boolean KS_TIMER = false;
+
     // 网络层拦截广告域名
     public static final boolean KILL_NET = false;
 

@@ -80,10 +80,26 @@ public final class BootTimer {
                     if (SystemClock.uptimeMillis() - processStart > BOOT_WINDOW) {
                         return result;
                     }
-                    // 主页：永不处理，并且立刻关闭开屏窗口
+                    /*
+                     * 遇到 launcher 时不能立刻关窗口。
+                     *
+                     * 网易云的 launcher 就是 LoadingActivity —— 开屏页本身。
+                     * 之前一进来就 close()，导致 SplashKill / SkipKiller
+                     * 全部失效，跳过按钮就留下来了。
+                     *
+                     * 现在：先看这个 launcher 是不是"真主页"。
+                     * 有列表 / 有底部导航 = 真主页，才关窗口。
+                     */
                     if (act.getClass().getName().equals(launcher(act))) {
-                        SplashWindow.close();
-                        Xp.log("main activity reached, splash window closed");
+                        MAIN.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (isRealHome(act)) {
+                                    SplashWindow.close();
+                                    Xp.log("real home reached, splash window closed");
+                                }
+                            }
+                        }, 120);
                         return result;
                     }
 
@@ -276,6 +292,51 @@ public final class BootTimer {
             Xp.log("launcher = " + launcherCls);
         }
         return launcherCls;
+    }
+
+    /*
+     * 判断这个页面是不是"真主页"。
+     * 真主页一定有：列表容器 或 底部导航（多个可点项）。
+     * 开屏页两者都没有。
+     */
+    private static boolean isRealHome(Activity act) {
+        try {
+            View decor = act.getWindow() == null ? null : act.getWindow().peekDecorView();
+            if (decor == null) {
+                return false;
+            }
+            int[] st = new int[3];   // 节点数 / 滚动词 / 可点数
+            scanHome(decor, 0, st);
+            // 有滚动容器 或 可点控件 >= 3，认为是真主页
+            return st[1] > 0 || st[2] >= 3;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private static void scanHome(View v, int depth, int[] st) {
+        if (v == null || depth > 16 || st[0] > 120) {
+            return;
+        }
+        try {
+            st[0]++;
+            String cls = v.getClass().getName();
+            if (cls.contains("RecyclerView") || cls.contains("ScrollView")
+                    || cls.contains("ViewPager") || cls.contains("ListView")) {
+                st[1]++;
+            }
+            if (v.isClickable()) {
+                st[2]++;
+            }
+            if (v instanceof ViewGroup) {
+                ViewGroup g = (ViewGroup) v;
+                int n = g.getChildCount();
+                for (int i = 0; i < n; i++) {
+                    scanHome(g.getChildAt(i), depth + 1, st);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     private static void skip(Activity act) {

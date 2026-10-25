@@ -17,9 +17,28 @@ import io.github.libxposed.api.XposedInterface;
  */
 public final class FastSkip {
 
+    /*
+     * 类名必须明确是"广告"的，才拦它的 load。
+     *
+     * === 之前误伤评论/点赞的原因 ===
+     *
+     * 这里原来有 "splash" 和 "feedad" 两个宽泛词。
+     * 快手的 FeedLoadManager、SplashLoader 这类正常业务类都会被命中，
+     * 然后它的 loadCommentList(callback) 被拦成 null ——
+     * 表现就是评论数、点赞数有时候有有时候没有。
+     *
+     * 现在只认"广告"语义的类名。
+     */
     private static final String[] CLS_HINT = {
-            "splash", "adload", "admanager", "adhelper", "adutil", "adproxy",
-            "feedad", "nativead", "ksad", "advert", "commercial", "adrequest"
+            "adload", "admanager", "adhelper", "adutil", "adproxy",
+            "nativead", "ksad", "advert", "adrequest", "adcache"
+    };
+
+    // 类名里带这些的，即使命中了 CLS_HINT 也不动
+    private static final String[] CLS_SKIP = {
+            "comment", "like", "digg", "praise", "follow", "fans",
+            "profile", "user", "feedload", "feedmanager", "feedcache",
+            "splashloader", "splashmanager"
     };
 
     private static final String[] VERB = {
@@ -75,6 +94,11 @@ public final class FastSkip {
 
     private static boolean interesting(String name) {
         String low = name.toLowerCase();
+        for (String skip : CLS_SKIP) {
+            if (low.contains(skip)) {
+                return false;
+            }
+        }
         for (String h : CLS_HINT) {
             if (low.contains(h)) {
                 return true;
@@ -135,20 +159,21 @@ public final class FastSkip {
         return count;
     }
 
+    // 回调参数必须是"广告回调"，名字里要带 ad
     private static boolean hasCallbackParam(Method m) {
         for (Class<?> p : m.getParameterTypes()) {
-            if (p.isInterface()) {
-                String n = p.getName();
-                if (n.startsWith("java.") || n.startsWith("android.os")) {
-                    continue;
-                }
-                return true;
+            String n = p.getName().toLowerCase();
+            if (n.startsWith("java.") || n.startsWith("android.os")
+                    || n.startsWith("android.view")) {
+                continue;
             }
-        }
-        for (Class<?> p : m.getParameterTypes()) {
-            String n = p.getName();
-            if (n.contains("Listener") || n.contains("Callback")
-                    || n.contains("CallBack") || n.contains("Handler")) {
+            boolean isCallback = p.isInterface() || n.contains("listener")
+                    || n.contains("callback") || n.contains("handler");
+            if (!isCallback) {
+                continue;
+            }
+            // 名字里必须有 ad 语义
+            if (n.contains("ad")) {
                 return true;
             }
         }

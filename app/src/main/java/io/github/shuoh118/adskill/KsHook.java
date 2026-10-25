@@ -36,9 +36,9 @@ public final class KsHook {
     };
 
     // 取广告数据的方法，返回 null
+    // 只保留 100% 是广告数据的 getter
     private static final String[] GET_AD = {
-            "getadinfo", "getaddata", "getadmodel", "getadphoto",
-            "getbrandinfo", "getpromoinfo", "getcommercial"
+            "getadinfo", "getaddata", "getadmodel", "getadphoto"
     };
 
     // 广告位置 / 类型，返回 0
@@ -161,18 +161,23 @@ public final class KsHook {
         // 1. isAd 系列 -> false
         if (ret == boolean.class && equalsAny(flat, IS_AD)) {
             Xp.hook(id, m, new Constant(Boolean.FALSE));
+            Xp.log("ks hook " + m.getDeclaringClass().getSimpleName() + "#" + m.getName());
             return true;
         }
 
         // 2. getAdInfo 系列 -> null
+        //    只在方法名明确是广告数据时动手，避免把正常数据置空
         if (!ret.isPrimitive() && equalsAny(flat, GET_AD)) {
             Xp.hook(id, m, new Constant(null));
+            Xp.log("ks hook " + m.getDeclaringClass().getSimpleName() + "#" + m.getName());
             return true;
         }
+        // 注意：不碰任何 getLikeCount / getCommentCount / getFollowerCount
 
         // 3. getAdType 系列 -> 0
         if (ret == int.class && equalsAny(flat, AD_POS)) {
             Xp.hook(id, m, new Constant(0));
+            Xp.log("ks hook " + m.getDeclaringClass().getSimpleName() + "#" + m.getName());
             return true;
         }
 

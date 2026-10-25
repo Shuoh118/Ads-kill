@@ -83,12 +83,15 @@ public final class Bootstrap {
         }
         Ctx.set(profile);
         SplashWindow.open();
+        SkipKiller.open();
         Xp.log("install begin pkg=" + real + " kind=" + profile.kind
                 + " pid=" + android.os.Process.myPid());
 
         // 快手走独立路径，不用网易云那套
         if (profile.isKuaishou()) {
             installKuaishou(cl, profile);
+        } else if (profile.isCoolapk()) {
+            installCoolapk(cl, profile);
         } else {
             installNetease(cl, profile);
         }
@@ -100,12 +103,7 @@ public final class Bootstrap {
      *   所以先让 isAd() 返回 false，再兜住视图层。
      */
     private static void installKuaishou(ClassLoader cl, Profile p) {
-        try {
-            VHook.install();
-            Xp.log("ks view hooks ok");
-        } catch (Throwable t) {
-            Xp.err("VHook failed", t);
-        }
+        // 视图层方案已移除：会误伤粉丝数、获赞栏等统计数字
 
         if (Cfg.KILL_SPLASH) {
             try {
@@ -124,29 +122,27 @@ public final class Bootstrap {
             Xp.err("KsSplash failed", t);
         }
 
-        // 快手开屏：压缩倒计时
-        try {
-            KsTimer.install();
-            Xp.log("ks timer ok");
-        } catch (Throwable t) {
-            Xp.err("KsTimer failed", t);
+        // 快手开屏：压缩倒计时（默认关闭，会误伤延时加载的数据）
+        if (Cfg.KS_TIMER) {
+            try {
+                KsTimer.install();
+                Xp.log("ks timer ok");
+            } catch (Throwable t) {
+                Xp.err("KsTimer failed", t);
+            }
         }
 
-        // 信息流广告：靠"广告"角标识别，不依赖任何类名
-        try {
-            KsWatch.install();
-            Xp.log("ks watch ok");
-        } catch (Throwable t) {
-            Xp.err("KsWatch failed", t);
-        }
+        // 角标扫描已移除：会把数字栏连带隐藏
 
-        if (Cfg.KILL_AD_SDK) {
+        if (Cfg.KILL_AD_SDK && Cfg.KS_SDKHOOK) {
             try {
                 SdkHook.installFiltered(cl, p.sdkPrefix);
             } catch (Throwable t) {
                 Xp.err("SdkHook failed", t);
             }
-            // 广告不加载了，但 App 在等失败回调，这里立刻回掉，避免开屏卡住
+        }
+        // FastSkip 默认关闭，会误伤统计数据的 load 方法
+        if (Cfg.KS_FASTSKIP) {
             try {
                 FastSkip.install(cl);
             } catch (Throwable t) {
@@ -159,10 +155,40 @@ public final class Bootstrap {
             @Override
             public void run() {
                 try {
-                    KsHook.install(loader);
+                    if (Cfg.KS_DATA) {
+                        KsHook.install(loader);
+                    }
                     Xp.log("ks hooks done");
                 } catch (Throwable t) {
                     Xp.err("KsHook failed", t);
+                }
+            }
+        };
+        runHeavy(heavy);
+    }
+
+    /*
+     * 酷安：开屏 + 信息流。
+     * 规则移植自开源项目 coolapk-purifier（MIT）。
+     * 不做设置页，不弹任何提示。
+     */
+    private static void installCoolapk(ClassLoader cl, Profile p) {
+        try {
+            CoSplash.install();
+            Xp.log("co splash ok");
+        } catch (Throwable t) {
+            Xp.err("CoSplash failed", t);
+        }
+
+        final ClassLoader loader = cl;
+        Runnable heavy = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    CoFeed.install(loader);
+                    Xp.log("co feed done");
+                } catch (Throwable t) {
+                    Xp.err("CoFeed failed", t);
                 }
             }
         };

@@ -20,8 +20,8 @@ cd "$(dirname "$0")"
 
 # ---------------- 配置 ----------------
 PROJECT="adskill"
-VERSION="2.0"
-VERSION_CODE="2"
+VERSION="3.0"
+VERSION_CODE="3"
 
 ANDROID_HOME="${ANDROID_HOME:-/opt/android}"
 BT_VERSION="${BT_VERSION:-35.0.0}"

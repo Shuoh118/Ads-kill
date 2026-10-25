@@ -4,8 +4,6 @@
 
 Android 广告拦截 LSPosed 模块，基于 [libxposed](https://github.com/libxposed/api) API 102。
 
-> 目前仅支持**网易云音乐**、**快手**、**快手极速版**理论通杀需自行实测
-
 ## 功能
 
 移除开屏及内部广告

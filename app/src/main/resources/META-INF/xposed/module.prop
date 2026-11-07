@@ -1,7 +1,7 @@
 id=io.github.shuoh118.adskill
 name=Ads Kill
-version=3.0
-versionCode=3
+version=4.0
+versionCode=4
 author=shuoh118
 description=移除开屏及内部广告。支持网易云音乐、快手、快手极速版
 

@@ -3,22 +3,31 @@ package io.github.shuoh118.adskill;
 import android.os.SystemClock;
 
 /*
- * 冷启动窗口。
+ * 开屏窗口。
  *
- * === 为什么需要这个 ===
+ * === 为什么需要窗口 ===
  *
- * 发现页变成空白的根因：SplashKill 的 setText 钩子和 AdHook 是整个进程
- * 生命周期都生效的。用户点进"发现"页后，页面里的推广文案、广告类名
- * 被当成开屏广告，于是大图被隐藏、内容被摘掉，整页就白了。
+ * SplashKill 的 setText 钩子如果在整个进程生命周期都生效，
+ * 用户点进"发现"页后，页面里的推广文案会被当成开屏广告，
+ * 大图被隐藏、内容被摘掉，整页就白了。
  *
- * 开屏广告只在进程刚起来那几秒存在。过了这个窗口，所有开屏相关逻辑
- * 都必须停手，否则就是在杀正常页面。
+ * 所以开屏逻辑必须限时。窗口外一律停手。
  *
- * 窗口长度：6 秒。正常冷启动到主页约 1.2 秒，给足余量。
- * 一旦有过 Activity 进入 resumed 且被确认是主页，窗口立即关闭。
+ * === 后台切回来的问题 ===
+ *
+ * 原来 open() 只在进程启动时调用一次，close() 之后永久关闭。
+ * 网易云从后台切回前台时会重新拉一次开屏广告，
+ * 但窗口已经关了，所以拦不住。
+ *
+ * === 现在 ===
+ *
+ * 每次 Activity 进入前台（onResume）都重新开窗。
+ * 开窗后 6 秒内有效，主页出现就关闭。
+ * 这样冷启动、切回来、从通知栏点进来，都能拦。
  */
 public final class SplashWindow {
 
+    // 窗口长度：从一次进入前台算起，6 秒内有效
     private static final long WINDOW_MS = 6000L;
 
     private static volatile long openedAt;
@@ -27,18 +36,18 @@ public final class SplashWindow {
     private SplashWindow() {
     }
 
+    /** 开启窗口。每次进前台都调用，会重置计时并解除关闭状态 */
     public static void open() {
-        if (openedAt == 0) {
-            openedAt = SystemClock.uptimeMillis();
-        }
+        openedAt = SystemClock.uptimeMillis();
+        closed = false;
     }
 
-    // 主页已就绪，立刻关闭窗口
+    /** 主页已就绪，关闭窗口 */
     public static void close() {
         closed = true;
     }
 
-    // 现在还在开屏窗口内吗
+    /** 现在还在窗口内吗 */
     public static boolean active() {
         if (closed) {
             return false;

@@ -84,11 +84,21 @@ public final class Bootstrap {
         Ctx.set(profile);
         SplashWindow.open();
         SkipKiller.open();
+
+        // 通用层：广告域名拦截，对所有应用生效
+        try {
+            AdUrlHook.install();
+        } catch (Throwable t) {
+            Xp.err("AdUrlHook failed", t);
+        }
         Xp.log("install begin pkg=" + real + " kind=" + profile.kind
                 + " pid=" + android.os.Process.myPid());
 
         // 快手走独立路径，不用网易云那套
-        if (profile.isKuaishou()) {
+        if (profile.isGeneric()) {
+            // 通用应用：只做域名拦截 + 跳过按钮，不装任何针对性 hook
+            Xp.log("generic mode, domain block only");
+        } else if (profile.isKuaishou()) {
             installKuaishou(cl, profile);
         } else if (profile.isCoolapk()) {
             installCoolapk(cl, profile);

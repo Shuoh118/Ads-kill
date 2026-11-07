@@ -17,7 +17,8 @@ public final class Profile {
     public enum Kind {
         NETEASE,
         KUAISHOU,
-        COOLAPK
+        COOLAPK,
+        GENERIC
     }
 
     public final Kind kind;
@@ -126,6 +127,17 @@ public final class Profile {
             true
     );
 
+    // ---------- 通用（只走域名拦截） ----------
+    public static final Profile GENERIC = new Profile(
+            Kind.GENERIC,
+            "",
+            new String[0],
+            new String[0],
+            new String[0],
+            false,
+            false
+    );
+
     // 按包名取策略
     public static Profile of(String pkg) {
         if (pkg == null) {
@@ -143,7 +155,8 @@ public final class Profile {
         if (pkg.equals(COOLAPK.pkg)) {
             return COOLAPK;
         }
-        return null;
+        // 其他应用一律走通用层，只做域名拦截
+        return GENERIC;
     }
 
     public boolean isKuaishou() {
@@ -152,6 +165,10 @@ public final class Profile {
 
     public boolean isCoolapk() {
         return kind == Kind.COOLAPK;
+    }
+
+    public boolean isGeneric() {
+        return kind == Kind.GENERIC;
     }
 
 }

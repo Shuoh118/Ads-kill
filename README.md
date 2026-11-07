@@ -2,7 +2,7 @@
 
 [English](README_EN.md)
 
-Android 广告拦截 LSPosed 模块，基于 [libxposed](https://github.com/libxposed/api) API 102
+Android 广告拦截 LSPosed 模块，基于 [libxposed](https://github.com/libxposed/api) API 102。
 
 ## 功能
 

@@ -28,6 +28,7 @@ public final class SplashKill {
     public static void install() {
         hookSetText();
         hookOnCreate();
+        hookOnResume();
         hookImage();
     }
 
@@ -296,6 +297,54 @@ public final class SplashKill {
                         }
                     }));
         }
+    }
+
+    // ---------- onResume：切回前台时重开窗口 ----------
+    private static void hookOnResume() {
+        try {
+            Method m = Activity.class.getDeclaredMethod("onResume");
+            try {
+                m.setAccessible(true);
+            } catch (Throwable ignored) {
+            }
+            Xp.hook("splashkill.onResume", m, SafeHook.splash("onResume", new SafeHook.Body() {
+                @Override
+                public Object run(XposedInterface.Chain chain) throws Throwable {
+                    Object result = chain.proceed();
+                    Object self = Xp.self(chain);
+                    if (!(self instanceof Activity)) {
+                        return result;
+                    }
+                    final Activity act = (Activity) self;
+                    String cls = act.getClass().getName();
+
+                    // 主页不算开屏，跳过
+                    if (isMainLike(cls)) {
+                        return result;
+                    }
+                    // 每次进前台都重开窗口，覆盖"后台切回来"
+                    SplashWindow.open();
+                    long[] delays = {0, 60, 150, 350};
+                    for (long d : delays) {
+                        MAIN.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                scan(act, "onResume");
+                            }
+                        }, d);
+                    }
+                    return result;
+                }
+            }));
+        } catch (Throwable t) {
+            Xp.log("SplashKill onResume hook fail: " + t);
+        }
+    }
+
+    // 类名像主页的不当开屏处理
+    private static boolean isMainLike(String cls) {
+        String low = cls.toLowerCase();
+        return low.endsWith("mainactivity") || low.contains(".main.");
     }
 
     // ---------- onCreate ----------

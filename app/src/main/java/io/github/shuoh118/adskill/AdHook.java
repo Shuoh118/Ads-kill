@@ -18,7 +18,7 @@ public final class AdHook {
             "load", "preload", "reload", "request", "fetch", "query",
             "show", "display", "present", "render", "play", "startad",
             "report", "track", "click", "expose", "monitor", "upload",
-            "send", "post", "submit", "prepare", "download", "parse", "register"
+            "send", "submit", "prepare", "download"
     };
 
         // 这些动词开头的布尔方法才改成 false
@@ -45,6 +45,22 @@ public final class AdHook {
             "getContext", "findViewById", "getResources"
     ));
 
+    /*
+     * 类名黑名单：这些类不是"广告播放入口"，而是广告模块自己的基础设施。
+     *
+     * issue #1 的崩溃就是 AdCookieStore 的 <clinit> 被误伤：
+     * initMemoryCookieAndSyncLoadFromFile 含 load 被 hook 成空实现，
+     * cookie 变 null，decodeCookie 直接 NPE。
+     *
+     * 原则：存储 / 配置 / 账号 / 初始化 这几类，宁可少杀广告，也不能拦。
+     */
+    private static final String[] PROTECT = {
+            "cookie", "store", "storage", "cache", "mmkv", "prefs", "preference",
+            "setting", "config", "account", "login", "session", "token", "auth",
+            "database", "provider", "json", "parse", "codec", "serial",
+            "init", "bootstrap", "preload", "boot"
+    };
+
     private static final AtomicInteger HOOKED = new AtomicInteger();
 
     private AdHook() {
@@ -57,6 +73,9 @@ public final class AdHook {
         int loaded = 0;
         for (String name : names) {
             if (name == null || name.isEmpty() || !Names.isAdClass(name)) {
+                continue;
+            }
+            if (isProtected(name)) {
                 continue;
             }
             if (loaded >= 3000) {
@@ -76,6 +95,17 @@ public final class AdHook {
         Xp.log("AdHook classes=" + classes + " methods=" + HOOKED.get()
                 + " scanned=" + names.size()
                 + " in " + (System.currentTimeMillis() - t0) + "ms");
+    }
+
+    // 类名里带基础设施语义的一律不碰
+    private static boolean isProtected(String fqcn) {
+        String lower = fqcn.toLowerCase(java.util.Locale.ROOT);
+        for (String p : PROTECT) {
+            if (lower.contains(p)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean hookClass(Class<?> owner) {
@@ -159,7 +189,7 @@ public final class AdHook {
 
         // 2. void：只跳过明确是加载/展示/上报的动作
         if (ret == void.class) {
-            if (!startsAny(flat, ACTION)) {
+            if (!startsAnyWord(w, ACTION)) {
                 return false;
             }
             Xp.hook(id, m, new XposedInterface.Hooker() {
@@ -186,9 +216,29 @@ public final class AdHook {
         return sb.toString();
     }
 
+    /*
+     * 只看第一个词，且只允许前缀匹配。
+     *
+     * 旧版用 flat.contains(p)，于是 initMemoryCookieAndSyncLoadFromFile
+     * 因为中间有 load 就被当成"加载广告"拦掉 —— issue #1 的根因。
+     */
+    private static boolean startsAnyWord(List<String> words, String[] prefixes) {
+        if (words.isEmpty()) {
+            return false;
+        }
+        String first = words.get(0);
+        for (String p : prefixes) {
+            if (first.equals(p) || first.startsWith(p)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // 布尔方法用整名匹配，且只允许从开头匹配
     private static boolean startsAny(String flat, String[] prefixes) {
         for (String p : prefixes) {
-            if (flat.startsWith(p) || flat.contains(p)) {
+            if (flat.startsWith(p)) {
                 return true;
             }
         }

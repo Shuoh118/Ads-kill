@@ -1,9 +1,9 @@
 id=io.github.shuoh118.adskill
 name=Ads Kill
-version=4.0
-versionCode=4
+version=4.1
+versionCode=5
 author=shuoh118
-description=移除开屏及内部广告。支持网易云音乐、快手、快手极速版
+description=移除开屏及内部广告 支持网易云音乐、快手、酷安、知乎、微博、小红书、抖音、B站等 40+ 应用走通用 SDK / 域名 / 开屏拦截
 
 # 下面两个决定 LSPosed 里是否显示「源码」和「主页」按钮
 sourceUrl=https://github.com/Shuoh118/Ads-kill

@@ -3,12 +3,11 @@ package io.github.shuoh118.adskill;
 // 总配置
 public final class Cfg {
 
-    // 支持的应用包名
-    public static final String[] PKGS = {
-            "com.netease.cloudmusic",   // 网易云音乐
-            "com.smile.gifmaker",       // 快手
-            "com.kuaishou.nebula"       // 快手极速版
-    };
+    /*
+     * 包名 → 策略的对照表在 Profile.of()，scope.list 由它对齐。
+     * 这里不再维护第二份包名列表：4.0 时 Cfg.PKGS 只写了 3 个包，
+     * scope.list 却有 26 个，两处早就不同步了。
+     */
 
     // true 时每次 hook 都打日志，排查用
     public static final boolean DEBUG = true;
@@ -85,6 +84,15 @@ public final class Cfg {
     // 网络层拦截广告域名
     public static final boolean KILL_NET = false;
 
+    /*
+     * 通用应用（无针对性规则的那些）是否启用视图层过滤。
+     *
+     * 只按"类名含 ad 词 + View 后缀"判定，命中才 detach，
+     * 对混淆过的 App 基本不生效，对没混淆的能去掉一部分硬编码广告位。
+     * 如果某个 App 出现异常，把它设成 false 重新打包即可。
+     */
+    public static final boolean GENERIC_VIEWS = true;
+
     // ---------- 开屏 ----------
 
     // 开屏广告处理
@@ -110,18 +118,5 @@ public final class Cfg {
     public static final boolean SYNC_SCAN = false;
 
     private Cfg() {
-    }
-
-    // 当前进程是否在支持列表里
-    public static boolean isTarget(String pkg) {
-        if (pkg == null) {
-            return false;
-        }
-        for (String p : PKGS) {
-            if (p.equals(pkg)) {
-                return true;
-            }
-        }
-        return false;
     }
 }

@@ -96,14 +96,83 @@ public final class Bootstrap {
 
         // 快手走独立路径，不用网易云那套
         if (profile.isGeneric()) {
-            // 通用应用：只做域名拦截 + 跳过按钮，不装任何针对性 hook
-            Xp.log("generic mode, domain block only");
+            installGeneric(cl, real);
         } else if (profile.isKuaishou()) {
             installKuaishou(cl, profile);
         } else if (profile.isCoolapk()) {
             installCoolapk(cl, profile);
+        } else if (profile.isZhihu()) {
+            installZhihu(cl, profile);
         } else {
             installNetease(cl, profile);
+        }
+    }
+
+    /*
+     * 这几个是 IM / 支付类，界面一旦被误摘就是聊天记录或付款页出问题，
+     * 代价远大于去掉一个广告位，所以只做域名 + SDK + 开屏，不做通用视图过滤。
+     */
+    private static final String[] VIEW_SKIP = {
+            "com.tencent.mm",
+            "com.tencent.mobileqq",
+            "com.eg.android.AlipayGphone"
+    };
+
+    private static boolean skipViewHook(String pkg) {
+        for (String p : VIEW_SKIP) {
+            if (p.equals(pkg)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /*
+     * 通用应用：没有针对性规则的那些（scope.list 里其余 30 多个包）。
+     *
+     * 4.1 之前这里只装了域名拦截，等于"报了支持其实没干活"。
+     * 现在装四层跨 App 也成立的通用规则：
+     *   1. 广告 SDK 入口 —— 穿山甲 / 优量汇 / 百度 / 快手联盟 / Mintegral ...
+     *      绝大多数 App 的开屏、插屏、激励视频都走这些 SDK，不依赖 App 内部类名
+     *   2. 开屏看门狗 —— 文案识别 + 大尺寸广告 View，6 秒窗口内有效
+     *   3. 摇一摇 —— 调用栈里出现广告类才拦传感器，不碰正常计步/横竖屏
+     *   4. 视图层 —— 类名含 ad 词的 View 直接 detach，混淆过的 App 自然无效
+     *
+     * 原则：宁可少杀，不制造崩溃。通用 App 里不装 AdHook 那种按类名扫全包的钩子。
+     */
+    private static void installGeneric(ClassLoader cl, String pkg) {
+        if (Cfg.KILL_AD_SDK) {
+            try {
+                // 通用 App 用安全模式：只改 isReady 这类查询，不吞 load/show
+                SdkHook.installSafe(cl);
+                Xp.log("generic sdk ok");
+            } catch (Throwable t) {
+                Xp.err("generic SdkHook failed", t);
+            }
+        }
+        if (Cfg.KILL_SPLASH) {
+            try {
+                SplashWatch.install();
+                Xp.log("generic splashwatch ok");
+            } catch (Throwable t) {
+                Xp.err("generic SplashWatch failed", t);
+            }
+        }
+        if (Cfg.KILL_SHAKE) {
+            try {
+                ShakeBlock.install(cl);
+                Xp.log("generic shake ok");
+            } catch (Throwable t) {
+                Xp.err("generic ShakeBlock failed", t);
+            }
+        }
+        if (Cfg.GENERIC_VIEWS && !skipViewHook(pkg)) {
+            try {
+                ViewHook.install();
+                Xp.log("generic view ok");
+            } catch (Throwable t) {
+                Xp.err("generic ViewHook failed", t);
+            }
         }
     }
 
@@ -199,6 +268,26 @@ public final class Bootstrap {
                     Xp.log("co feed done");
                 } catch (Throwable t) {
                     Xp.err("CoFeed failed", t);
+                }
+            }
+        };
+        runHeavy(heavy);
+    }
+
+    /*
+     * 知乎：启动广告 + 信息流 + 回答列表。
+     * 规则移植自开源项目 Zhiliao（MIT）。
+     */
+    private static void installZhihu(ClassLoader cl, Profile p) {
+        final ClassLoader loader = cl;
+        Runnable heavy = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    ZhAd.install(loader);
+                    Xp.log("zh hooks done");
+                } catch (Throwable t) {
+                    Xp.err("ZhAd failed", t);
                 }
             }
         };

@@ -18,6 +18,7 @@ public final class Profile {
         NETEASE,
         KUAISHOU,
         COOLAPK,
+        ZHIHU,
         GENERIC
     }
 
@@ -127,6 +128,17 @@ public final class Profile {
             true
     );
 
+    // ---------- 知乎 ----------
+    public static final Profile ZHIHU = new Profile(
+            Kind.ZHIHU,
+            "com.zhihu.android",
+            new String[]{"com.zhihu."},
+            new String[]{"广告"},
+            new String[0],
+            false,
+            true
+    );
+
     // ---------- 通用（只走域名拦截） ----------
     public static final Profile GENERIC = new Profile(
             Kind.GENERIC,
@@ -155,6 +167,9 @@ public final class Profile {
         if (pkg.equals(COOLAPK.pkg)) {
             return COOLAPK;
         }
+        if (pkg.equals(ZHIHU.pkg)) {
+            return ZHIHU;
+        }
         // 其他应用一律走通用层，只做域名拦截
         return GENERIC;
     }
@@ -165,6 +180,10 @@ public final class Profile {
 
     public boolean isCoolapk() {
         return kind == Kind.COOLAPK;
+    }
+
+    public boolean isZhihu() {
+        return kind == Kind.ZHIHU;
     }
 
     public boolean isGeneric() {

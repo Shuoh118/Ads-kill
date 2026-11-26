@@ -40,12 +40,40 @@ public final class SdkHook {
             "com.kuaishou.ads.KSAdManager",
             "com.kuaishou.ads.KSSplashAd",
             "com.yxcorp.kuaishou.addfp.KWAdsdkUtils",
+            // 穿山甲新版 API（PAG 前缀）
+            "com.bytedance.sdk.openadsdk.api.splash.PAGSplashAd",
+            "com.bytedance.sdk.openadsdk.api.nativead.PAGNativeAd",
+            "com.bytedance.sdk.openadsdk.api.rewarded.PAGRewardedAd",
+            "com.bytedance.sdk.openadsdk.api.interstitial.PAGInterstitialAd",
+            // 优量汇补充
+            "com.qq.e.ads.nativ.NativeAD",
+            "com.qq.e.ads.banner2.UnifiedBannerAD",
+            "com.qq.e.ads.interstitial2.UnifiedInterstitialAD",
+            // 百度补充
+            "com.baidu.mobads.sdk.api.InterstitialAd",
+            "com.baidu.mobads.sdk.api.NativeResponse",
+            // 快手联盟补充
+            "com.kwad.sdk.api.KsInterstitialAd",
+            "com.kwad.sdk.api.KsFeedAd",
+            "com.kwad.sdk.api.KsDrawAd",
             // Mintegral
             "com.mbridge.msdk.out.MBridgeSDK",
             "com.mbridge.msdk.out.MBSplashHandler",
+            "com.mbridge.msdk.out.MBNativeHandler",
+            "com.mbridge.msdk.out.MBInterstitialHandler",
+            "com.mbridge.msdk.out.MBRewardVideoHandler",
+            // Sigmob / TopOn / TradPlus
             "com.sigmob.windad.WindAdSDK",
+            "com.sigmob.windad.WindAds",
+            "com.sigmob.windad.splash.WindSplashAd",
             "com.anythink.core.api.ATAdManager",
-            "com.anythink.splashad.api.ATSplashAd"
+            "com.anythink.splashad.api.ATSplashAd",
+            "com.anythink.interstitial.api.ATInterstitial",
+            "com.anythink.rewardvideo.api.ATRewardVideoAd",
+            "com.anythink.nativead.api.ATNative",
+            "com.tradplus.ads.open.splash.TPSplashAd",
+            "com.tradplus.ads.open.interstitial.TPInterstitial",
+            "com.tradplus.ads.open.reward.TPRewardVideoAd"
     };
 
         // 只挂这些：加载 / 展示 / 就绪判断
@@ -57,7 +85,7 @@ public final class SdkHook {
     }
 
     public static void install(ClassLoader cl) {
-        installFiltered(cl, null);
+        installFiltered(cl, null, true);
     }
 
     // 给 FastSkip 用：拿到所有入口类名
@@ -67,6 +95,21 @@ public final class SdkHook {
 
     // 按当前应用的 SDK 前缀过滤，避免装无关的类
     public static void installFiltered(ClassLoader cl, String[] prefixes) {
+        installFiltered(cl, prefixes, true);
+    }
+
+    /*
+     * 安全模式：只把 isReady / isLoaded / isValid 这类布尔查询改成 false，
+     * 不动 load / show 这些有副作用的 void 方法。
+     *
+     * 通用 App 里必须用这个：把 load 拦成 no-op 会让宿主等回调等到超时，
+     * 表现就是开屏白屏 3~5 秒；只改查询结果的话，宿主通常直接走"无广告"分支。
+     */
+    public static void installSafe(ClassLoader cl) {
+        installFiltered(cl, null, false);
+    }
+
+    private static void installFiltered(ClassLoader cl, String[] prefixes, boolean blockVoid) {
         long t0 = System.currentTimeMillis();
         int classes = 0;
         int methods = 0;
@@ -80,13 +123,14 @@ public final class SdkHook {
             } catch (Throwable ignored) {
                 continue;
             }
-            int n = hookClass(type);
+            int n = hookClass(type, blockVoid);
             if (n > 0) {
                 classes++;
                 methods += n;
             }
         }
         Xp.log("SdkHook classes=" + classes + " methods=" + methods
+                + " blockVoid=" + blockVoid
                 + " in " + (System.currentTimeMillis() - t0) + "ms");
     }
 
@@ -99,7 +143,7 @@ public final class SdkHook {
         return false;
     }
 
-    private static int hookClass(Class<?> owner) {
+    private static int hookClass(Class<?> owner, boolean blockVoid) {
         // View 子类整体跳过
         if (android.view.View.class.isAssignableFrom(owner)) {
             return 0;
@@ -136,6 +180,9 @@ public final class SdkHook {
             Class<?> ret = m.getReturnType();
             // 只处理这两种，对象返回一律放过
             if (ret != boolean.class && ret != void.class) {
+                continue;
+            }
+            if (!blockVoid && ret == void.class) {
                 continue;
             }
             String id = "sdk." + owner.getName() + "#" + m.getName() + "#" + m.getParameterCount();

@@ -52,6 +52,16 @@ public final class PrefsHook {
                 continue;
             }
             final Class<?> ret = m.getReturnType();
+            /*
+             * 只处理基本类型和字符串。
+             *
+             * 对象返回值（JSONObject / Set / Parcelable ...）一律放过：
+             * 旧版这里返回 null，广告模块拿到 null 再调方法就是 NPE，
+             * issue #1 的 AdCookieStore 崩溃也可能是这条路径。
+             */
+            if (!simpleType(ret)) {
+                continue;
+            }
             String id = "prefs.mmkv." + type.getSimpleName() + "#" + n + "#" + p.length;
             try {
                 Xp.hook(id, m, new XposedInterface.Hooker() {
@@ -129,6 +139,13 @@ public final class PrefsHook {
             Xp.debug("ad key blocked: " + key);
         }
         return hit;
+    }
+
+    // 能不能安全地造一个"空值"
+    private static boolean simpleType(Class<?> t) {
+        return t == boolean.class || t == int.class || t == long.class
+                || t == float.class || t == double.class
+                || t == String.class || t == byte[].class;
     }
 
     private static Object emptyOf(Class<?> type) {

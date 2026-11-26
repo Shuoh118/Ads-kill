@@ -1,20 +1,32 @@
 package io.github.shuoh118.adskill;
 
+import java.util.Locale;
+
 /*
  * 通用广告域名表。
  *
- * 思路来自 AdBlocker_Reborn：不依赖类名，只看 URL。
- * 但它的 hosts 库偏欧美，国内覆盖不够，这里手工整理。
+ * === 4.1 重写原因 ===
  *
- * 用法：URL 命中列表里的域名就改写成本地地址，
- * SDK 拿到连接失败后会走"无广告"分支，不会卡死。
+ * 旧版用 String.contains 比对，两个方向都错：
+ *   1. 白名单里有 "log" / "beacon" 这种通用词，
+ *      mobads-logs.baidu.com 因为含 "log" 被当成白名单放行 —— 漏拦。
+ *   2. 黑名单里有 gtimg.cn / kuaishou.com / bytedance.com 这种整域，
+ *      而作用域里有 QQ、微信、淘宝 —— 会把正常图片和接口一起改写 —— 误伤。
+ *
+ * 现在只做两件事：
+ *   - 按 host 后缀精确匹配（a.b.com 命中 b.com，但不命中 notb.com）
+ *   - 先排除当前 App 自家的域名，绝不动 App 自己的接口
+ *
+ * 路径类规则（CDN 上混着正常资源和广告素材）单独放在 HOST_PATHS，
+ * 只有 host 和 path 同时命中才算广告。
  */
 public final class AdDomain {
 
     /*
-     * 广告 / 统计域名。按平台分组，方便以后增删。
+     * 纯广告 / 统计域名：host 等于它，或者是它的子域，才算命中。
+     * 这里只能放"整个域都是广告业务"的域名，不放 CDN 和 App 接口。
      */
-    public static final String[] HOSTS = {
+    private static final String[] HOSTS = {
             // ---- 友盟 / 阿里系 ----
             "umeng.com",
             "umengcloud.com",
@@ -25,33 +37,19 @@ public final class AdDomain {
             "alimama.com",
             "alimama.cn",
             "tanx.com",
-            "mmstat.com",
-            "aliapp.org",
 
             // ---- 腾讯 / 优量汇 ----
             "gdt.qq.com",
             "pgdt.gtimg.cn",
             "pingma.qq.com",
-            "gtimg.cn",
-            "qq.com/gdt",
             "ad.qq.com",
 
             // ---- 字节 / 穿山甲 ----
             "pangolin-sdk-toutiao.com",
             "pangle.io",
+            "pangle-sdk.net",
             "oceanengine.com",
             "gromore.com",
-            "bytedance.com",
-            "snssdk.com",
-            "toutiao.com/api/ad",
-            "pstatp.com",
-
-            // ---- 快手 ----
-            "kuaishou.com",
-            "kwai.com",
-            "kwaicdn.com",
-            "gifshow.com",
-            "yximgs.com",
 
             // ---- 百度 ----
             "mobads.baidu.com",
@@ -60,7 +58,7 @@ public final class AdDomain {
             "cpro.baidu.com",
             "hm.baidu.com",
 
-            // ---- 其他国内平台 ----
+            // ---- 其他国内广告 / 统计平台 ----
             "miaozhen.com",
             "admaster.net",
             "growingio.com",
@@ -95,43 +93,61 @@ public final class AdDomain {
             "sigmob.com",
             "anythinktech.com",
             "tradplusad.com",
-            "windmill.com",
             "appsflyer.com",
-            "adjust.com",
-            "facebook.com/audience_network",
-            "graph.facebook.com/ads"
+            "adjust.com"
     };
 
     /*
-     * 白名单：这些不是广告，绝不能拦。
-     * 音乐 CDN、图片、接口都在这里。
+     * 当前 App 自家的域名：命中就立刻放行。
+     *
+     * 这些包本身的接口和 CDN 就在这些域上，
+     * 一旦被改写成 127.0.0.1，App 直接白屏。
      */
-    public static final String[] WHITE = {
-            "music.126.net", "nosdn.127.net", "126.net/imgextra",
-            "p1.music.126.net", "p2.music.126.net",
-            "gifshow.com/rest", "kuaishou.com/rest",
-            "cookieless", "beacon", "log",
-            ".mp3", ".mp4", ".flac", ".m4a", ".webp", ".jpg", ".png",
-            "lyric", "artist", "album", "playlist", "song"
+    private static final String[][] OWN_HOSTS = {
+            {"com.smile.gifmaker",
+                    "kuaishou.com", "gifshow.com", "kwai.com", "kwaicdn.com", "yximgs.com"},
+            {"com.kuaishou.nebula",
+                    "kuaishou.com", "gifshow.com", "kwai.com", "kwaicdn.com", "yximgs.com"},
+            {"com.ss.android.ugc.aweme",
+                    "snssdk.com", "bytedance.com", "pstatp.com", "douyin.com", "amemv.com"},
+            {"com.ss.android.ugc.aweme.lite",
+                    "snssdk.com", "bytedance.com", "pstatp.com", "douyin.com", "amemv.com"},
+            {"com.sina.weibo", "weibo.com", "weibo.cn", "sina.com.cn", "sinaimg.cn"},
+            {"com.xingin.xhs", "xiaohongshu.com", "xhscdn.com", "xhs.cn"},
+            {"com.zhihu.android", "zhihu.com", "zhimg.com"},
+            {"com.coolapk.market", "coolapk.com", "coolapkmarket.com"},
+            {"com.netease.cloudmusic", "music.126.net", "163.com", "127.net"},
+            {"tv.danmaku.bili", "bilibili.com", "hdslb.com", "biliapi.net", "bilivideo.com"},
+            {"com.taobao.taobao", "taobao.com", "tmall.com", "alicdn.com", "tbcdn.cn"},
+            {"com.jingdong.app.mall", "jd.com", "360buyimg.com", "jd.hk"},
+            {"com.xunmeng.pinduoduo", "pinduoduo.com", "yangkeduo.com", "pddpic.com"},
+            {"com.eg.android.AlipayGphone", "alipay.com", "alipayobjects.com", "alipcdn.com"}
     };
 
     private AdDomain() {
     }
 
-    /** URL 是不是广告请求 */
+    /** URL 是不是广告请求（不知道包名时用这个） */
     public static boolean isAd(String url) {
+        return isAd(url, null);
+    }
+
+    /** URL 是不是广告请求；pkg 用于排除 App 自家域名 */
+    public static boolean isAd(String url, String pkg) {
         if (url == null || url.length() < 8) {
             return false;
         }
-        String low = url.toLowerCase();
-        // 先过白名单
-        for (String w : WHITE) {
-            if (low.contains(w)) {
-                return false;
-            }
+        String host = hostOf(url);
+        if (host.isEmpty()) {
+            return false;
         }
+        // 1. 自家域名一律放行
+        if (pkg != null && isOwnHost(host, pkg)) {
+            return false;
+        }
+        // 2. 纯广告域名
         for (String h : HOSTS) {
-            if (low.contains(h)) {
+            if (matchHost(host, h)) {
                 return true;
             }
         }
@@ -147,5 +163,74 @@ public final class AdDomain {
             return "https://127.0.0.1";
         }
         return "http://127.0.0.1";
+    }
+
+    // ---------- 内部 ----------
+
+    private static boolean isOwnHost(String host, String pkg) {
+        for (String[] row : OWN_HOSTS) {
+            if (!row[0].equals(pkg)) {
+                continue;
+            }
+            for (int i = 1; i < row.length; i++) {
+                if (matchHost(host, row[i])) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** host 等于 domain，或者是它的子域 */
+    private static boolean matchHost(String host, String domain) {
+        return host.equals(domain) || host.endsWith("." + domain);
+    }
+
+    /** 从 URL 里取 host，取不到返回空串 */
+    static String hostOf(String url) {
+        if (url == null || url.isEmpty()) {
+            return "";
+        }
+        String u = url.trim().toLowerCase(Locale.ROOT);
+        int start = 0;
+        int scheme = u.indexOf("://");
+        if (scheme >= 0) {
+            start = scheme + 3;
+        } else if (u.startsWith("//")) {
+            start = 2;
+        }
+        // 先切出 authority（到第一个 / ? # 为止），再依次去掉 userinfo 和端口
+        int end = u.length();
+        for (int i = start; i < u.length(); i++) {
+            char c = u.charAt(i);
+            if (c == '/' || c == '?' || c == '#') {
+                end = i;
+                break;
+            }
+        }
+        if (end <= start) {
+            return "";
+        }
+        String h = u.substring(start, end);
+        int at = h.lastIndexOf('@');
+        if (at >= 0) {
+            h = h.substring(at + 1);
+        }
+        if (h.startsWith("[")) {
+            // IPv6 字面量：[::1]:8080
+            int close = h.indexOf(']');
+            if (close > 0) {
+                h = h.substring(0, close + 1);
+            }
+        } else {
+            int colon = h.lastIndexOf(':');
+            if (colon >= 0) {
+                h = h.substring(0, colon);
+            }
+        }
+        if (h.startsWith("www.")) {
+            h = h.substring(4);
+        }
+        return h;
     }
 }

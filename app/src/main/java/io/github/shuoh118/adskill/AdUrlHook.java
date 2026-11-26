@@ -35,6 +35,9 @@ public final class AdUrlHook {
     /** 是否启用。默认开，因为改写比抛异常安全 */
     public static final boolean ENABLED = true;
 
+    // 当前进程包名：用来排除 App 自家域名，只取一次
+    private static volatile String PKG;
+
     private AdUrlHook() {
     }
 
@@ -43,10 +46,13 @@ public final class AdUrlHook {
             Xp.log("AdUrlHook disabled");
             return;
         }
+        if (PKG == null) {
+            PKG = App.packageName();
+        }
         int n = 0;
         n += hookUrl();
         n += hookUri();
-        Xp.log("AdUrlHook methods=" + n);
+        Xp.log("AdUrlHook methods=" + n + " pkg=" + PKG);
     }
 
     // ---------- java.net.URL ----------
@@ -72,7 +78,7 @@ public final class AdUrlHook {
                         Object[] args = Xp.args(chain).toArray();
                         if (args.length > idx && args[idx] instanceof String) {
                             String u = (String) args[idx];
-                            if (AdDomain.isAd(u)) {
+                            if (AdDomain.isAd(u, PKG)) {
                                 Xp.log("ad url blocked: " + shortUrl(u));
                                 args[idx] = AdDomain.toLocal(u);
                                 return chain.proceed(args);
@@ -103,7 +109,7 @@ public final class AdUrlHook {
                     Object a = Xp.arg(chain, 0);
                     if (a instanceof String) {
                         String u = (String) a;
-                        if (AdDomain.isAd(u)) {
+                        if (AdDomain.isAd(u, PKG)) {
                             Xp.log("ad uri blocked: " + shortUrl(u));
                             Object[] args = Xp.args(chain).toArray();
                             args[0] = AdDomain.toLocal(u);
